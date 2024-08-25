@@ -1,2 +1,2 @@
-# genref
-Golang library providing generic references
+# boxed
+This module provides generic data box interface
