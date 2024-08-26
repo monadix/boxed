@@ -5,13 +5,18 @@ type Box[T any] interface {
 	Put(T) error
 }
 
-func Update[T any, B Box[T]](box B, f func(T) T) error {
+func Update[T any, B Box[T]](box B, f func(T) (T, error)) error {
 	val, err := box.Get()
 	if err != nil {
 		return err
 	}
 
-	return box.Put(f(val))
+	result, err := f(val)
+	if err != nil {
+		return err
+	}
+
+	return box.Put(result)
 }
 
 func Swap[T any, B1 Box[T], B2 Box[T]](box1 B1, box2 B2) error {
