@@ -4,49 +4,85 @@ import (
 	"reflect"
 
 	"github.com/monadix/boxed"
+	"github.com/monadix/boxed/pkg/boxutils"
+	"github.com/monadix/boxed/pkg/reflection"
 	"github.com/monadix/boxed/pkg/utils"
 )
 
 type MultiBox[T any] struct {
-	box boxed.Box[any]
+	value any
 }
 
-func deepUnbox[T any](v any) (T, error) {
-	if reflect.TypeOf(v) == reflect.TypeFor[T]() {
-		return v.(T), nil
-	}
-
-	methodGet := reflect.ValueOf(v).MethodByName("Get")
-
-	if !methodGet.IsValid() {
-		return utils.Zero[T](), ErrMultiBoxInvalidType{
-			missingMethod: "Get",
-			gotType:       reflect.TypeOf(v),
-			expectedType:  reflect.TypeFor[T](),
+func New[T any](val any) (MultiBox[T], error) {
+	if reflect.TypeOf(val) == reflect.TypeFor[T]() {
+		return utils.Zero[MultiBox[T]](), ErrUnboxedTargetType{
+			gotType: reflect.TypeOf(val),
 		}
 	}
 
-	methGetType := methodGet.Type()
-	if methGetType.NumIn() != 0 || methGetType.NumOut() != 2 || !methGetType.Out(1).Implements(reflect.TypeFor[error]()) {
-		ins := make([]reflect.Type, 0, methGetType.NumIn())
-		outs := make([]reflect.Type, 0, methGetType.NumOut())
-
-		for i := 0; i < methGetType.NumIn(); i++ {
-			ins = append(ins, methGetType.In(i))
-		}
-
-		for i := 0; i < methGetType.NumOut(); i++ {
-			outs = append(outs, methGetType.Out(i))
-		}
-
-		return utils.Zero[T](), ErrMultiBoxInvalidMethod{
-			invalidMethod: "Get",
-			gotIns:        ins,
-			gotOuts:       outs,
-			expectedIns:   []reflect.Type{},
-			expectedOuts:  []reflect.Type{reflect.TypeFor[any](), reflect.TypeFor[error]()},
-		}
+	res := MultiBox[T]{
+		value: val,
 	}
 
-	return utils.Zero[T](), nil //TODO
+	for reflect.TypeOf(val) != reflect.TypeFor[T]() {
+		box, err := boxutils.MagicAsBox[any](val)
+		if err != nil {
+			return utils.Zero[MultiBox[T]](), err
+		}
+
+		val, err = box.Get()
+		if err != nil {
+			return utils.Zero[MultiBox[T]](), err
+		}
+
+		res.value = val
+	}
+
+	return res, nil
+}
+
+func (b MultiBox[T]) Get() (T, error) {
+	res := b.value
+
+	for reflect.TypeOf(res) != reflect.TypeFor[T]() {
+		methGet, err := reflection.GetMethodWithTypes(res, "Get",
+			[]reflect.Type{},
+			[]reflect.Type{reflect.TypeFor[any](), reflect.TypeFor[error]()},
+		)
+		if err != nil {
+			return utils.Zero[T](), err
+		}
+
+		vals := methGet.Call([]reflect.Value{})
+		if err := vals[1].Interface().(error); err != nil {
+			return utils.Zero[T](), err
+		}
+
+		res = vals[0].Interface()
+	}
+
+	return res.(T), nil
+}
+
+func (b MultiBox[T]) Put(val T) error {
+	box := b.value
+
+	for !reflect.TypeOf(box).Implements(reflect.TypeFor[boxed.Box[T]]()) {
+		methGet, err := reflection.GetMethodWithTypes(box, "Get",
+			[]reflect.Type{},
+			[]reflect.Type{reflect.TypeFor[any](), reflect.TypeFor[error]()},
+		)
+		if err != nil {
+			return err
+		}
+
+		vals := methGet.Call([]reflect.Value{})
+		if err := vals[1].Interface().(error); err != nil {
+			return err
+		}
+
+		box = vals[0].Interface()
+	}
+
+	return box.(boxed.Box[T]).Put(val)
 }

@@ -5,36 +5,13 @@ import (
 	"reflect"
 )
 
-type ErrMultiBoxInvalidType struct {
-	missingMethod string
-	gotType       reflect.Type
-	expectedType  reflect.Type
+type ErrUnboxedTargetType struct {
+	gotType reflect.Type
 }
 
-func (e ErrMultiBoxInvalidType) Error() string {
+func (e ErrUnboxedTargetType) Error() string {
 	return fmt.Sprintf(
-		"while working with MultiBox got type %v, but expected either a boxed.Box (missing method: %v) or a %v",
+		"got unboxed target type %v on the first layer while initializing a MultiBox",
 		e.gotType,
-		e.missingMethod,
-		e.expectedType,
-	)
-}
-
-type ErrMultiBoxInvalidMethod struct {
-	invalidMethod string
-	gotIns        []reflect.Type
-	gotOuts       []reflect.Type
-	expectedIns   []reflect.Type
-	expectedOuts  []reflect.Type
-}
-
-func (e ErrMultiBoxInvalidMethod) Error() string {
-	return fmt.Sprintf(
-		"while working with MultiBox got method %v with ins %v and outs %v, but expected ins %v and outs %v",
-		e.invalidMethod,
-		e.gotIns,
-		e.gotOuts,
-		e.expectedIns,
-		e.expectedOuts,
 	)
 }
