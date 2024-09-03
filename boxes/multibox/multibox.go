@@ -65,24 +65,21 @@ func (b MultiBox[T]) Get() (T, error) {
 }
 
 func (b MultiBox[T]) Put(val T) error {
-	box := b.value
-
-	for !reflect.TypeOf(box).Implements(reflect.TypeFor[boxed.Box[T]]()) {
-		methGet, err := reflection.GetMethodWithTypes(box, "Get",
-			[]reflect.Type{},
-			[]reflect.Type{reflect.TypeFor[any](), reflect.TypeFor[error]()},
-		)
-		if err != nil {
-			return err
-		}
-
-		vals := methGet.Call([]reflect.Value{})
-		if err := vals[1].Interface().(error); err != nil {
-			return err
-		}
-
-		box = vals[0].Interface()
+	if box, isBox := b.value.(boxed.Box[T]); isBox {
+		box.Put(val)
 	}
 
-	return box.(boxed.Box[T]).Put(val)
+	box, err := boxutils.MagicAsBox[any](b.value)
+	if err != nil {
+		return err
+	}
+
+	err = boxed.Update(box, func(value any) (any, error) {
+		return value, MultiBox[T]{value}.Put(val)
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
