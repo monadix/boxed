@@ -24,7 +24,5 @@ func (b *JsonBox[T]) Unmarshal(data []byte) error {
 }
 
 func New[T any](val T) JsonBox[T] {
-	return JsonBox[T]{
-		value: val,
-	}
+	return JsonBox[T]{value: val}
 }
