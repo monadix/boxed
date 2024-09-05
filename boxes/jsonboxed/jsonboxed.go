@@ -23,8 +23,8 @@ func (b *JsonBox[T]) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, &b.value)
 }
 
-func New(val any) JsonBox[any] {
-	return JsonBox[any]{
+func New[T any](val T) JsonBox[T] {
+	return JsonBox[T]{
 		value: val,
 	}
 }
