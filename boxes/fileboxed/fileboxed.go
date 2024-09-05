@@ -1,14 +1,13 @@
 package fileboxed
 
 import (
-	"bytes"
-	"encoding/gob"
 	"os"
 
+	unmarshal "github.com/monadix/boxed/pkg/un-marshal"
 	"github.com/monadix/boxed/pkg/utils"
 )
 
-type FileBox[T any] struct {
+type FileBox[T unmarshal.UnMarshaler] struct {
 	path string
 }
 
@@ -24,37 +23,34 @@ func (b FileBox[T]) Get() (T, error) {
 		return utils.Zero[T](), err
 	}
 
-	err = gob.NewDecoder(bytes.NewBuffer(data)).Decode(&result)
+	err = result.Unmarshal(data)
 	return result, err
 }
 
 func (b FileBox[T]) Put(t T) error {
-	var buffer bytes.Buffer
-	err := gob.NewEncoder(&buffer).Encode(t)
+	data, err := t.Marshal()
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(b.path, buffer.Bytes(), 0644)
+	return os.WriteFile(b.path, data, 0644)
 }
 
-func New[T any](path string) (FileBox[T], error) {
+func New[T unmarshal.UnMarshaler](path string) (FileBox[T], error) {
 	_, err := os.Stat(path)
 	return FileBox[T]{path: path}, err
 }
 
-func NewWith[T any](path string, t T) (FileBox[T], error) {
-	var buffer bytes.Buffer
-
-	err := gob.NewEncoder(&buffer).Encode(t)
+func NewWith[T unmarshal.UnMarshaler](path string, t T) (FileBox[T], error) {
+	data, err := t.Marshal()
 	if err != nil {
 		return utils.Zero[FileBox[T]](), err
 	}
 
-	return FileBox[T]{path: path}, os.WriteFile(path, buffer.Bytes(), 0644)
+	return FileBox[T]{path: path}, os.WriteFile(path, data, 0644)
 }
 
-func NewWithDefault[T any](path string, t T) (FileBox[T], error) {
+func NewWithDefault[T unmarshal.UnMarshaler](path string, t T) (FileBox[T], error) {
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
 		return NewWith(path, t)
