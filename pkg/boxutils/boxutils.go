@@ -6,6 +6,7 @@ import (
 	"github.com/monadix/boxed"
 	"github.com/monadix/boxed/boxes/funcbox"
 	"github.com/monadix/boxed/pkg/reflection"
+	"github.com/monadix/boxed/pkg/utils"
 )
 
 func MagicAsBox[T any](val any) (boxed.Box[T], error) {
@@ -28,11 +29,11 @@ func MagicAsBox[T any](val any) (boxed.Box[T], error) {
 	return funcbox.New(
 		func() (T, error) {
 			res := methGet.Call([]reflect.Value{})
-			return res[0].Interface().(T), res[1].Interface().(error)
+			return utils.CastOrNil[T](res[0].Interface()), utils.CastOrNil[error](res[1].Interface())
 		},
 		func(v T) error {
 			res := methPut.Call([]reflect.Value{reflect.ValueOf(v)})
-			return res[0].Interface().(error)
+			return utils.CastOrNil[error](res[0].Interface())
 		},
 	), nil
 }

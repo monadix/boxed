@@ -54,7 +54,7 @@ func (b MultiBox[T]) Get() (T, error) {
 		}
 
 		vals := methGet.Call([]reflect.Value{})
-		if err := vals[1].Interface().(error); err != nil {
+		if err := utils.CastOrNil[error](vals[1].Interface()); err != nil {
 			return utils.Zero[T](), err
 		}
 
