@@ -11,3 +11,11 @@ func Must[T any](t T, err error) T {
 	}
 	return t
 }
+
+func CastOrNil[T any](val any) T {
+	if val == nil {
+		return Zero[T]()
+	}
+
+	return val.(T)
+}
